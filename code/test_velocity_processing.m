@@ -166,22 +166,12 @@ for a = 1:na
         north(i,:) = vector_velocity_enu(2,:);
         up(i,:) = vector_velocity_enu(3,:);
 
-        vel_x(i,:) = vector_velocity_xyz(1,:);
-        vel_y(i,:) = vector_velocity_xyz(2,:);
-        vel_z(i,:) = vector_velocity_xyz(3,:);
-
     end
 
     % calculate average velocities over averaging interval
     sigAverage(acounter).east = mean(east,1,'omitnan');
     sigAverage(acounter).north = mean(north,1,'omitnan');
     sigAverage(acounter).up = mean(up,1,'omitnan');
-
-    % for diagnostics: output x y and z velocities in instrument
-    % coordinates
-    sigAverage(acounter).vel_x = mean(vel_x,1,'omitnan');
-    sigAverage(acounter).vel_y = mean(vel_y,1,'omitnan');
-    sigAverage(acounter).vel_z = mean(vel_z,1,'omitnan');
 
     % calculate average backscatter
     sigAverage(acounter).backscatter1 = mean(backscatter1,1,'omitnan');
@@ -196,7 +186,7 @@ end
 toc
 
 % extract data into useable matrices and vectors
-[u,v,w,vel_x,vel_y,vel_z,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(depth_cells)));
+[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(depth_cells)));
 [time,watertemp] = deal(zeros(length(sigAverage),1));
 for i = 1:length(sigAverage)
     time(i) = sigAverage(i).time;
@@ -204,9 +194,6 @@ for i = 1:length(sigAverage)
     v(i,:) = sigAverage(i).north;
     w(i,:) = sigAverage(i).up;
     watertemp(i) = sigAverage(i).watertemp;
-    vel_x(i,:) = sigAverage(i).vel_x;
-    vel_y(i,:) = sigAverage(i).vel_y;
-    vel_z(i,:) = sigAverage(i).vel_z;
     backscatter1(i,:) = sigAverage(i).backscatter1;
     backscatter2(i,:) = sigAverage(i).backscatter2;
     backscatter3(i,:) = sigAverage(i).backscatter3;
@@ -239,31 +226,7 @@ clim(max(abs(w),[],'all')*[-1 1]);
 datetick('x');
 
 figure(2);
-colormap(cmocean('balance'));
-
-tiledlayout(3,1);
-nexttile;
-pcolor(time,depth_cells,vel_x','EdgeColor','none');
-cb = colorbar;
-cb.Label.String = 'x (m/s)';
-clim(max(abs(vel_x),[],'all')*[-1 1]);
-datetick('x');
-
-nexttile;
-pcolor(time,depth_cells,vel_y','EdgeColor','none');
-cb = colorbar;
-cb.Label.String = 'y (m/s)';
-clim(max(abs(vel_y),[],'all')*[-1 1]);
-datetick('x');
-
-nexttile;
-pcolor(time,depth_cells,vel_z','EdgeColor','none');
-cb = colorbar;
-cb.Label.String = 'z (m/s)';
-clim(max(abs(vel_z),[],'all')*[-1 1]);
-datetick('x');
-
-figure(3);
+colormap(cmocean('amp'));
 tiledlayout(4,1);
 
 nexttile;
