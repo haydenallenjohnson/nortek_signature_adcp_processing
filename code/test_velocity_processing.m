@@ -15,7 +15,7 @@ mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's 
 tic
 %% load data
 file_number = 41;
-load(['../Matlab_Format_with_coord_transforms/S106174A002_let_s_go_' num2str(file_number) '.mat']);
+load(['C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/S106174A002_let_s_go_' num2str(file_number) '.mat']);
 
 % set plotting limits
 datenum_lims = [min(Data.Average_Time) max(Data.Average_Time)];
