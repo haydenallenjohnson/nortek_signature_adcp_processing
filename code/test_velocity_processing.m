@@ -11,10 +11,11 @@ beam_angle = 25;
 
 % processing parameters
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
+max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
 
 tic
 %% load data
-file_number = 40;
+file_number = 41;
 load(['C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/S106174A002_let_s_go_' num2str(file_number) '.mat']);
 
 % set plotting limits
@@ -125,10 +126,27 @@ for a = 1:na
             trim_ind = depth_cells > beam(j).max_depth;
             beam(j).vel_at_depth_cells(trim_ind) = NaN;
             beam(j).backscatter_at_depth_cells(trim_ind) = NaN;
+        
+            % check if any beams should be excluded based on tilt
+            if beam(j).unit_vector_enu(3) < cosd(max_beam_tilt)
+                beam(j).exclude = true;
+            else 
+                beam(j).exclude = false;
+            end
         end
-
-        % convert beam velocities to instrument frame (xyz) velocity
-        vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_depth_cells,beam(3).vel_at_depth_cells,beam(4).vel_at_depth_cells,beam_angle);
+        
+        exclude_array = [beam.exclude];
+        if sum(exclude_array) > 1
+            vector_velocity_xyz = NaN(3,length(depth_cells));
+        else
+            if sum(exclude_array) == 0
+                exclude_beam = 0;
+            elseif sum(exclude_array) == 1 
+                exclude_beam = find(exclude_array);
+            end
+            % convert beam velocities to instrument frame (xyz) velocity
+            vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_depth_cells,beam(2).vel_at_depth_cells,beam(3).vel_at_depth_cells,beam(4).vel_at_depth_cells,beam_angle,exclude_beam);
+        end
 
         % convert instrument frame (xyz) velocity to ENU
         vector_velocity_enu = R_xyz_to_enu*vector_velocity_xyz;
