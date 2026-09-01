@@ -156,9 +156,6 @@ for a = 1:na
     sigAverage(acounter).backscatter3 = mean(backscatter3,1,'omitnan');
     sigAverage(acounter).backscatter4 = mean(backscatter4,1,'omitnan');
 
-    % erase variables
-    [east,north,up,backscatter1,backscatter2,backscatter3,backscatter4] = deal([]);
-
     % increment average counter
     acounter = acounter + 1;
 end
