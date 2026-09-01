@@ -14,7 +14,7 @@ mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's 
 
 tic
 %% load data
-file_number = 41;
+file_number = 40;
 load(['C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/S106174A002_let_s_go_' num2str(file_number) '.mat']);
 
 % set plotting limits
@@ -31,6 +31,9 @@ sigAverage = struct;
 doff = 0.25; % Steve's estimate
 depth_cell_size = 0.5;
 depth_cells = (1:depth_cell_size:40);
+
+% create array of cell position along beam
+cell_distance_along_beam = (Config.Average_BlankingDistance + Config.Average_CellSize.*(1:double(Data.Average_NCells(1))))./cosd(beam_angle);
 
 % Find indices for each ensemble
 firstindex = find(Data.Average_EnsembleCount==1);
@@ -68,7 +71,7 @@ for a = 1:na
     sigAverage(acounter).z = depth_cells;
     
     % initialize arrays to store ping velocities
-    [east,north,up,vel_x,vel_y,vel_z,backscatter1,backscatter2,backscatter3,backscatter4] = deal(nan(length(AvgInd),length(depth_cells)));
+    [east,north,up,backscatter1,backscatter2,backscatter3,backscatter4] = deal(nan(length(AvgInd),length(depth_cells)));
 
     % iterate over each individual ping
     for i = 1:length(AvgInd)
@@ -82,83 +85,52 @@ for a = 1:na
         % rotation matrix to convert xyz in instrument coordinates to ENU
         R_xyz_to_enu = R_enu*R_heading*R_pitch*R_roll;
 
-        % calculate vectors specifying beam positions in xyz coordinates
-        % (instrument coordinate frame)
-        beam1_xyz = [sind(beam_angle); 0; cosd(beam_angle)];
-        beam2_xyz = [0; -sind(beam_angle); cosd(beam_angle)];
-        beam3_xyz = [-sind(beam_angle); 0; cosd(beam_angle)];
-        beam4_xyz = [0; sind(beam_angle); cosd(beam_angle)];
+        % initialize beam structure
+        beam = struct;
 
-        % transform beam position vectors to ENU coordinates
-        beam1_enu = R_xyz_to_enu*beam1_xyz;
-        beam2_enu = R_xyz_to_enu*beam2_xyz;
-        beam3_enu = R_xyz_to_enu*beam3_xyz;
-        beam4_enu = R_xyz_to_enu*beam4_xyz;
-
-        % create array of cell position along beam
-        cell_distance_along_beam = (Config.Average_BlankingDistance + Config.Average_CellSize.*(1:double(Data.Average_NCells(AvgInd(i)))))./cosd(beam_angle);
-        
-        % calculate depth cell position along each individual beam
-        beam1_depth_cell_positions_along_beam = (depth_cells-doff)./beam1_enu(3);
-        beam2_depth_cell_positions_along_beam = (depth_cells-doff)./beam2_enu(3);
-        beam3_depth_cell_positions_along_beam = (depth_cells-doff)./beam3_enu(3);
-        beam4_depth_cell_positions_along_beam = (depth_cells-doff)./beam4_enu(3);
-        
         % create beam velocity interpolants
-        beam1_vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam1(AvgInd(i),:),'linear');
-        beam2_vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam2(AvgInd(i),:),'linear');
-        beam3_vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam3(AvgInd(i),:),'linear');
-        beam4_vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam4(AvgInd(i),:),'linear');
-
-        % calculate beam velocity at each depth
-        beam1_vel_at_depth_cells = beam1_vel_interpolant(beam1_depth_cell_positions_along_beam);
-        beam2_vel_at_depth_cells = beam2_vel_interpolant(beam2_depth_cell_positions_along_beam);
-        beam3_vel_at_depth_cells = beam3_vel_interpolant(beam3_depth_cell_positions_along_beam);
-        beam4_vel_at_depth_cells = beam4_vel_interpolant(beam4_depth_cell_positions_along_beam);
+        beam(1).vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam1(AvgInd(i),:),'linear');
+        beam(2).vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam2(AvgInd(i),:),'linear');
+        beam(3).vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam3(AvgInd(i),:),'linear');
+        beam(4).vel_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_VelBeam4(AvgInd(i),:),'linear');
 
         % create beam amplitude interpolants
-        beam1_amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam1(AvgInd(i),:),'linear');
-        beam2_amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam2(AvgInd(i),:),'linear');
-        beam3_amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam3(AvgInd(i),:),'linear');
-        beam4_amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam4(AvgInd(i),:),'linear');
+        beam(1).amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam1(AvgInd(i),:),'linear');
+        beam(2).amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam2(AvgInd(i),:),'linear');
+        beam(3).amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam3(AvgInd(i),:),'linear');
+        beam(4).amp_interpolant = griddedInterpolant(cell_distance_along_beam,Data.Average_AmpBeam4(AvgInd(i),:),'linear');
 
-        % calculate beam amplitude at each depth and populate arrays
-        backscatter1(i,:) = beam1_amp_interpolant(beam1_depth_cell_positions_along_beam);
-        backscatter2(i,:) = beam2_amp_interpolant(beam2_depth_cell_positions_along_beam);
-        backscatter3(i,:) = beam3_amp_interpolant(beam3_depth_cell_positions_along_beam);
-        backscatter4(i,:) = beam4_amp_interpolant(beam4_depth_cell_positions_along_beam);
+        % calculate vectors specifying beam positions in xyz coordinates
+        % (instrument coordinate frame)
+        beam(1).unit_vector_xyz = [sind(beam_angle); 0; cosd(beam_angle)];
+        beam(2).unit_vector_xyz = [0; -sind(beam_angle); cosd(beam_angle)];
+        beam(3).unit_vector_xyz = [-sind(beam_angle); 0; cosd(beam_angle)];
+        beam(4).unit_vector_xyz = [0; sind(beam_angle); cosd(beam_angle)];
 
-        % trim each beam to exclude sidelobe effects
-        max_depth = Data.Average_Pressure(AvgInd(i)).*min([beam1_enu(3),beam3_enu(3),beam4_enu(3)]);
-        trim_ind = depth_cells > (max_depth - depth_cell_size);
-        beam1_vel_at_depth_cells(trim_ind) = NaN;
-        beam3_vel_at_depth_cells(trim_ind) = NaN;
-        beam4_vel_at_depth_cells(trim_ind) = NaN;
+        for j = 1:length(beam)
+            % transform beam position vectors to ENU coordinates
+            beam(j).unit_vector_enu = R_xyz_to_enu*beam(j).unit_vector_xyz;
+            
+            % calculate depth cell position along each individual beam
+            beam(j).depth_cell_positions_along_beam = (depth_cells-doff)./beam(j).unit_vector_enu(3);
 
-        max_depth = Data.Average_Pressure(AvgInd(i)).*beam1_enu(3) - depth_cell_size;
-        trim_ind = depth_cells > max_depth;
-        beam1_vel_at_depth_cells(trim_ind) = NaN;
-        backscatter1(i,trim_ind) = NaN;
+            % calculate beam velocity at each depth
+            beam(j).vel_at_depth_cells = beam(j).vel_interpolant(beam(j).depth_cell_positions_along_beam);
+        
+            % calculate beam amplitude (backscatter) at each depth
+            beam(j).backscatter_at_depth_cells = beam(j).amp_interpolant(beam(j).depth_cell_positions_along_beam);
+        
+            % trim each beam to exclude sidelobe effects
+            beam(j).max_depth = Data.Average_Pressure(AvgInd(i)).*beam(j).unit_vector_enu(3) - depth_cell_size;
+            trim_ind = depth_cells > beam(j).max_depth;
+            beam(j).vel_at_depth_cells(trim_ind) = NaN;
+            beam(j).backscatter_at_depth_cells(trim_ind) = NaN;
+        end
 
-        max_depth = Data.Average_Pressure(AvgInd(i)).*beam2_enu(3) - depth_cell_size;
-        trim_ind = depth_cells > max_depth;
-        beam2_vel_at_depth_cells(trim_ind) = NaN;
-        backscatter2(i,trim_ind) = NaN;
+        % convert beam velocities to instrument frame (xyz) velocity
+        vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_depth_cells,beam(3).vel_at_depth_cells,beam(4).vel_at_depth_cells,beam_angle);
 
-        max_depth = Data.Average_Pressure(AvgInd(i)).*beam3_enu(3) - depth_cell_size;
-        trim_ind = depth_cells > max_depth;
-        beam3_vel_at_depth_cells(trim_ind) = NaN;
-        backscatter3(i,trim_ind) = NaN;
-
-        max_depth = Data.Average_Pressure(AvgInd(i)).*beam4_enu(3) - depth_cell_size;
-        trim_ind = depth_cells > max_depth;
-        beam4_vel_at_depth_cells(trim_ind) = NaN;
-        backscatter4(i,trim_ind) = NaN;
-
-        % convert beam velocities to xyz velocity
-        vector_velocity_xyz = convert_beam_to_xyz_velocity(beam1_vel_at_depth_cells,beam3_vel_at_depth_cells,beam4_vel_at_depth_cells,beam_angle);
-
-        % convert velocity to ENU
+        % convert instrument frame (xyz) velocity to ENU
         vector_velocity_enu = R_xyz_to_enu*vector_velocity_xyz;
 
         % extract velocity components and populate arrays
@@ -166,6 +138,11 @@ for a = 1:na
         north(i,:) = vector_velocity_enu(2,:);
         up(i,:) = vector_velocity_enu(3,:);
 
+        % extract backscatter from each beam 
+        backscatter1(i,:) = beam(1).backscatter_at_depth_cells;
+        backscatter2(i,:) = beam(2).backscatter_at_depth_cells;
+        backscatter3(i,:) = beam(3).backscatter_at_depth_cells;
+        backscatter4(i,:) = beam(4).backscatter_at_depth_cells;
     end
 
     % calculate average velocities over averaging interval
@@ -178,6 +155,9 @@ for a = 1:na
     sigAverage(acounter).backscatter2 = mean(backscatter2,1,'omitnan');
     sigAverage(acounter).backscatter3 = mean(backscatter3,1,'omitnan');
     sigAverage(acounter).backscatter4 = mean(backscatter4,1,'omitnan');
+
+    % erase variables
+    [east,north,up,backscatter1,backscatter2,backscatter3,backscatter4] = deal([]);
 
     % increment average counter
     acounter = acounter + 1;
@@ -226,7 +206,7 @@ clim(max(abs(w),[],'all')*[-1 1]);
 datetick('x');
 
 figure(2);
-colormap(cmocean('amp'));
+colormap(cmocean('deep'));
 tiledlayout(4,1);
 
 nexttile;
