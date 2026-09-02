@@ -21,10 +21,10 @@ acounter = 1;
 % initialize structure
 sigAverage = struct;
 
-% specify depth grid (actually height above the bottom! Confusing!)
+% specify vertical bin grid
 doff = 0.25; % Steve's estimate
-depth_cell_size = 0.5; % m
-depth_cells = (1:depth_cell_size:40);
+vertical_bin_size = 0.5; % m
+vertical_bins = (1:vertical_bin_size:40);
 
 % read file names
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
@@ -42,7 +42,7 @@ file_list = file_list(1:end-1);
 % specify destination directory for processed data
 destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
 
-for fi = 40:41 % length(file_list)
+for fi = 10:14 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -84,10 +84,10 @@ for fi = 40:41 % length(file_list)
         sigAverage(acounter).lon = longitude;
         sigAverage(acounter).watertemp = median(Data.Average_Temperature(AvgInd));
         sigAverage(acounter).depth = median(Data.Average_Pressure(AvgInd));
-        sigAverage(acounter).z = depth_cells;
+        sigAverage(acounter).z = vertical_bins;
         
         % initialize arrays to store ping velocities
-        [east,north,up,backscatter1,backscatter2,backscatter3,backscatter4] = deal(nan(length(AvgInd),length(depth_cells)));
+        [east,north,up,backscatter1,backscatter2,backscatter3,backscatter4] = deal(nan(length(AvgInd),length(vertical_bins)));
     
         % iterate over each individual ping
         for i = 1:length(AvgInd)
@@ -127,20 +127,22 @@ for fi = 40:41 % length(file_list)
                 % transform beam position vectors to ENU coordinates
                 beam(j).unit_vector_enu = R_xyz_to_enu*beam(j).unit_vector_xyz;
                 
-                % calculate depth cell position along each individual beam
-                beam(j).depth_cell_positions_along_beam = (depth_cells-doff)./beam(j).unit_vector_enu(3);
+                % calculate vertical bin position along each individual beam
+                beam(j).vertical_bin_positions_along_beam = (vertical_bins-doff)./beam(j).unit_vector_enu(3);
     
-                % calculate beam velocity at each depth
-                beam(j).vel_at_depth_cells = beam(j).vel_interpolant(beam(j).depth_cell_positions_along_beam);
+                % calculate beam velocity at each vertical bin
+                beam(j).vel_at_vertical_bins = beam(j).vel_interpolant(beam(j).vertical_bin_positions_along_beam);
             
-                % calculate beam amplitude (backscatter) at each depth
-                beam(j).backscatter_at_depth_cells = beam(j).amp_interpolant(beam(j).depth_cell_positions_along_beam);
+                % calculate beam amplitude (backscatter) at each vertical
+                % bin
+                beam(j).backscatter_at_vertical_bins = beam(j).amp_interpolant(beam(j).vertical_bin_positions_along_beam);
             
                 % trim each beam to exclude sidelobe effects
-                beam(j).max_depth = Data.Average_Pressure(AvgInd(i)).*beam(j).unit_vector_enu(3) - depth_cell_size;
-                trim_ind = depth_cells > beam(j).max_depth;
-                beam(j).vel_at_depth_cells(trim_ind) = NaN;
-                beam(j).backscatter_at_depth_cells(trim_ind) = NaN;
+                beam(j).max_height = Data.Average_Pressure(AvgInd(i)).*beam(j).unit_vector_enu(3) - vertical_bin_size;
+                beam(j).min_height = doff + ((Config.Average_BlankingDistance + Config.Average_CellSize)./cosd(beam_angle)).*beam(j).unit_vector_enu(3) + vertical_bin_size;
+                trim_ind = vertical_bins > beam(j).max_height | vertical_bins < beam(j).min_height;
+                beam(j).vel_at_vertical_bins(trim_ind) = NaN;
+                beam(j).backscatter_at_vertical_bins(trim_ind) = NaN;
             
                 % check if any beams should be excluded based on tilt
                 if beam(j).unit_vector_enu(3) < cosd(max_beam_tilt)
@@ -152,7 +154,7 @@ for fi = 40:41 % length(file_list)
             
             exclude_array = [beam.exclude];
             if sum(exclude_array) > 1
-                vector_velocity_xyz = NaN(3,length(depth_cells));
+                vector_velocity_xyz = NaN(3,length(vertical_bins));
             else
                 if sum(exclude_array) == 0
                     exclude_beam = 0;
@@ -160,7 +162,7 @@ for fi = 40:41 % length(file_list)
                     exclude_beam = find(exclude_array);
                 end
                 % convert beam velocities to instrument frame (xyz) velocity
-                vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_depth_cells,beam(2).vel_at_depth_cells,beam(3).vel_at_depth_cells,beam(4).vel_at_depth_cells,beam_angle,exclude_beam);
+                vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_vertical_bins,beam(2).vel_at_vertical_bins,beam(3).vel_at_vertical_bins,beam(4).vel_at_vertical_bins,beam_angle,exclude_beam);
             end
     
             % convert instrument frame (xyz) velocity to ENU
@@ -172,10 +174,10 @@ for fi = 40:41 % length(file_list)
             up(i,:) = vector_velocity_enu(3,:);
     
             % extract backscatter from each beam 
-            backscatter1(i,:) = beam(1).backscatter_at_depth_cells;
-            backscatter2(i,:) = beam(2).backscatter_at_depth_cells;
-            backscatter3(i,:) = beam(3).backscatter_at_depth_cells;
-            backscatter4(i,:) = beam(4).backscatter_at_depth_cells;
+            backscatter1(i,:) = beam(1).backscatter_at_vertical_bins;
+            backscatter2(i,:) = beam(2).backscatter_at_vertical_bins;
+            backscatter3(i,:) = beam(3).backscatter_at_vertical_bins;
+            backscatter4(i,:) = beam(4).backscatter_at_vertical_bins;
         end
     
         % calculate average velocities over averaging interval
@@ -196,7 +198,7 @@ end
 toc
 
 % extract data into useable matrices and vectors
-[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(depth_cells)));
+[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(vertical_bins)));
 [time,watertemp] = deal(zeros(length(sigAverage),1));
 for i = 1:length(sigAverage)
     time(i) = sigAverage(i).time;
@@ -211,61 +213,45 @@ for i = 1:length(sigAverage)
 end
 %%
 figure(1);
-colormap(cmocean('balance'));
+
+% set velocity colour limits
+combined_vel_array = [u v];
+max_color = prctile(abs(combined_vel_array),99,'all');
+vel_lims = max_color*[-1 1];
 
 tiledlayout(3,1);
-nexttile;
-pcolor(time,depth_cells,u','EdgeColor','none');
+ax1 = nexttile;
+pcolor(time,vertical_bins,u','EdgeColor','none');
+colormap(ax1,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'East (m/s)';
-clim(max(abs(u),[],'all')*[-1 1]);
+clim(vel_lims);
 datetick('x');
 ylabel ('z (m)');
 
-nexttile;
-pcolor(time,depth_cells,v','EdgeColor','none');
+ax2 = nexttile;
+pcolor(time,vertical_bins,v','EdgeColor','none');
+colormap(ax2,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'North (m/s)';
-clim(max(abs(v),[],'all')*[-1 1]);
+clim(vel_lims);
 datetick('x');
 ylabel ('z (m)');
 
+ax3 = nexttile;
+pcolor(time,vertical_bins,backscatter4','edgecolor','none');
+colormap(ax3,cmocean('deep'));
+cb = colorbar;
+cb.Label.String = 'Backscatter';
+datetick('x');
+ylabel ('z (m)');
+
+%{
 nexttile;
-pcolor(time,depth_cells,w','EdgeColor','none');
+pcolor(time,vertical_bins,w','EdgeColor','none');
 cb = colorbar;
 cb.Label.String = 'Up (m/s)';
 clim(max(abs(w),[],'all')*[-1 1]);
 datetick('x');
 ylabel ('z (m)');
-
-figure(2);
-colormap(cmocean('deep'));
-tiledlayout(4,1);
-
-nexttile;
-pcolor(time,depth_cells,backscatter1','edgecolor','none');
-cb = colorbar;
-cb.Label.String = 'Beam1 Amp';
-datetick('x');
-ylabel ('z (m)');
-
-nexttile;
-pcolor(time,depth_cells,backscatter2','edgecolor','none');
-cb = colorbar;
-cb.Label.String = 'Beam2 Amp';
-datetick('x');
-ylabel ('z (m)');
-
-nexttile;
-pcolor(time,depth_cells,backscatter3','edgecolor','none');
-cb = colorbar;
-cb.Label.String = 'Beam3 Amp';
-datetick('x');
-ylabel ('z (m)');
-
-nexttile;
-pcolor(time,depth_cells,backscatter4','edgecolor','none');
-cb = colorbar;
-cb.Label.String = 'Beam4 Amp';
-datetick('x');
-ylabel ('z (m)');
+%}
