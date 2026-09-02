@@ -4,27 +4,22 @@ longitude = -156.8791;
 
 % specify magnetic north declination
 declination = 10.5; % degrees, positive if magnetic north is east of true north
-% calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+% value 10.5 calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
 
-% specify beam angle (degrees)
+% specify beam angle (degrees) of transducer faces relative to instrument z axis
 beam_angle = 25;
 
 % processing parameters
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
 
-tic
-
-% initialize average counter (across multiple files)
-acounter = 1;
-
-% initialize structure
-sigAverage = struct;
-
 % specify vertical bin grid
 doff = 0.25; % Steve's estimate
 vertical_bin_size = 0.5; % m
 vertical_bins = (1:vertical_bin_size:40);
+
+% specify destination directory for processed data
+destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
 
 % read file names
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
@@ -39,10 +34,13 @@ file_list = natsortfiles(file_list);
 % exclude average file (last in alphanumeric ordering)
 file_list = file_list(1:end-1);
 
-% specify destination directory for processed data
-destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
+% initialize average counter (across multiple files)
+acounter = 1;
 
-for fi = 10:14 % length(file_list)
+% initialize sigAverage structure
+sigAverage = struct;
+
+for fi = 147:148 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -195,7 +193,15 @@ for fi = 10:14 % length(file_list)
         acounter = acounter + 1;
     end
 end
-toc
+
+% remove averages where instrument was out of water
+badavg = false(size(sigAverage));
+for i = 1:length(sigAverage)
+    if sigAverage(i).depth < min_depth
+        badavg(i) = true;
+    end
+end
+sigAverage(badavg) = [];
 
 % extract data into useable matrices and vectors
 [u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(vertical_bins)));
