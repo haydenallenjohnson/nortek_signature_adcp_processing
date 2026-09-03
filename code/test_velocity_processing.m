@@ -12,6 +12,7 @@ beam_angle = 25;
 % processing parameters
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
+min_depth = 4; % meters, exclude data when instrument is shallower than this
 
 % specify vertical bin grid
 doff = 0.25; % Steve's estimate
@@ -24,6 +25,11 @@ destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_dat
 % read file names
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
 file_name_base = 'S106174A002_let_s_go_*.mat';
+
+% END OF USER-SPECIFIED PARAMETERS
+% -------------------------------------------------------------------------
+
+% construct list of files to process
 file_list = dir([data_dir file_name_base]);
 
 % Caution: whether matlab understands "file9, file10" etc. correctly seems 
@@ -40,7 +46,7 @@ acounter = 1;
 % initialize sigAverage structure
 sigAverage = struct;
 
-for fi = 147:148 % length(file_list)
+for fi = 87:95 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -217,7 +223,8 @@ for i = 1:length(sigAverage)
     backscatter3(i,:) = sigAverage(i).backscatter3;
     backscatter4(i,:) = sigAverage(i).backscatter4;
 end
-%%
+
+%% create plot
 figure(1);
 
 % set velocity colour limits
