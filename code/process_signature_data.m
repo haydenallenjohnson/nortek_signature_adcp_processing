@@ -13,6 +13,10 @@ beam_angle = 25;
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
 min_depth = 4; % meters, exclude data when instrument is shallower than this
+maxwaveperiod = 20; % max wave period allowed during final screening, usually 20 s
+minwaveperiod = 2; % min wave period allowed during final screening, usually 2 s 
+minwaveheight = 0.2; % smallest wave height observable, usually 0.2 m 
+maxtailshapeexponent = -2.5;  % max value for f^q in the tail (f> 0.3 Hz), theoretically -4 
 
 % specify vertical bin grid
 doff = 0.25; % Steve's estimate
@@ -40,17 +44,74 @@ file_list = natsortfiles(file_list);
 % exclude average file (last in alphanumeric ordering)
 file_list = file_list(1:end-1);
 
-% initialize average counter (across multiple files)
+% initialize counters (across multiple files)
 acounter = 1;
+bcounter = 1;
 
-% initialize sigAverage structure
+% initialize sigAverage and sigBurst structures
 sigAverage = struct;
+sigBurst = struct;
 
-for fi = 87:95 % length(file_list)
+for fi = 89:93 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
     load([data_dir file_list(fi).name]);
+
+    %% process burst data
+    % Find indices for each burst
+    firstindex = find(Data.Burst_EnsembleCount==1);
+    spacing = mean(diff(firstindex));
+    if isnan(spacing) % exception for only one burst in file
+        spacing=length(Data.Burst_EnsembleCount)-firstindex; 
+    end 
+    nb = length(firstindex);
+
+    for b = 1:nb
+
+        % select burst data
+        burstInd = firstindex(b) + (1:spacing) - 1;
+        burstInd( burstInd > length(Data.Burst_Time) ) = [];
+
+        burst_sampling_rate = double(Config.Burst_SamplingRate);
+        burst_pressure = Data.Burst_Pressure(burstInd);
+        burst_time = Data.Burst_Time(burstInd);
+
+        % meta data
+        sigBurst(bcounter).time = burst_time(1);
+        sigBurst(bcounter).lat = latitude;
+        sigBurst(bcounter).lon = longitude;
+        sigBurst(bcounter).watertemp = median( Data.Burst_Temperature(burstInd) );
+        sigBurst(bcounter).depth = median( Data.Burst_Pressure(burstInd) );
+
+        % call Pwaves.m to calculate wave statistics
+        [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
+        
+        % quality control from Jim and Sam's code
+        if ~isnan(E)
+            bt = polyfit(log(f(f>0.3)),log(E(f>0.3)),1);
+            tailshape = bt(1);
+        else
+            tailshape = inf;
+        end
+
+        if 1 % tailshape <= maxtailshapeexponent && Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
+            sigBurst(bcounter).sigwaveheight = Hs;
+            sigBurst(bcounter).peakwaveperiod = Tp;
+            sigBurst(bcounter).wavespectra.energy = E;
+            sigBurst(bcounter).wavespectra.freq = f;
+        else
+            sigBurst(bcounter).sigwaveheight = NaN;
+            sigBurst(bcounter).peakwaveperiod = NaN;
+            sigBurst(bcounter).wavespectra.energy = NaN(size(E));
+            sigBurst(bcounter).wavespectra.freq = NaN(size(f));
+        end
+
+        % increment burst counter;
+        bcounter = bcounter + 1;
+    end
+
+    %% process average data
 
     % create array of cell position along beam
     cell_distance_along_beam = (Config.Average_BlankingDistance + Config.Average_CellSize.*(1:double(Data.Average_NCells(1))))./cosd(beam_angle);
@@ -209,11 +270,12 @@ for i = 1:length(sigAverage)
 end
 sigAverage(badavg) = [];
 
+%% plotting
 % extract data into useable matrices and vectors
-[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(vertical_bins)));
-[time,watertemp] = deal(zeros(length(sigAverage),1));
+[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(NaN(length(sigAverage),length(vertical_bins)));
+[average_time,watertemp] = deal(NaN(length(sigAverage),1));
 for i = 1:length(sigAverage)
-    time(i) = sigAverage(i).time;
+    average_time(i) = sigAverage(i).time;
     u(i,:) = sigAverage(i).east;
     v(i,:) = sigAverage(i).north;
     w(i,:) = sigAverage(i).up;
@@ -224,7 +286,15 @@ for i = 1:length(sigAverage)
     backscatter4(i,:) = sigAverage(i).backscatter4;
 end
 
-%% create plot
+energy = NaN(length(sigBurst),length(sigBurst(1).wavespectra.energy));
+burst_time = NaN(length(sigBurst),1);
+for i = 1:length(sigBurst)
+    burst_time(i) = sigBurst(i).time;
+    energy(i,:) = sigBurst(i).wavespectra.energy;
+end
+freq = sigBurst(1).wavespectra.freq;
+
+% plot velocity and backscatter
 figure(1);
 
 % set velocity colour limits
@@ -234,7 +304,7 @@ vel_lims = max_color*[-1 1];
 
 tiledlayout(3,1);
 ax1 = nexttile;
-pcolor(time,vertical_bins,u','EdgeColor','none');
+pcolor(average_time,vertical_bins,u','EdgeColor','none');
 colormap(ax1,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'East (m/s)';
@@ -243,7 +313,7 @@ datetick('x');
 ylabel ('z (m)');
 
 ax2 = nexttile;
-pcolor(time,vertical_bins,v','EdgeColor','none');
+pcolor(average_time,vertical_bins,v','EdgeColor','none');
 colormap(ax2,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'North (m/s)';
@@ -252,12 +322,41 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(time,vertical_bins,backscatter4','edgecolor','none');
+pcolor(average_time,vertical_bins,backscatter4','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
+
+% plot wave data
+figure(2);
+tiledlayout(3,1);
+
+nexttile;
+plot(burst_time,[sigBurst.peakwaveperiod],'color','black','linewidth',1);
+datetick('x');
+ylabel('T_p (s)');
+
+nexttile;
+plot(burst_time,[sigBurst.sigwaveheight],'color','black','linewidth',1);
+datetick('x');
+ylabel('H_s (m)');
+
+nexttile;
+pcolor(burst_time,freq,energy','edgecolor','none');
+colormap(cmocean('amp'));
+cb = colorbar;
+cb.Label.String = 'PSD (Pa^2/Hz)';
+set(gca,'colorscale','log');
+set(gca,'yscale','log');
+datetick('x');
+ylabel('Frequency (Hz)');
+
+figure(3);
+plot(average_time,watertemp);
+datetick('x');
+ylabel('Temperature (\circC)');
 
 %{
 nexttile;

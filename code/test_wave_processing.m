@@ -27,7 +27,7 @@ for b = 1:nb
     burstInd( burstInd > length(Data.Burst_Time) ) = [];
 
     burst_sampling_rate = double(Config.Burst_SamplingRate);
-    burst_pressure = Data.Burst_Pressure(burstInd) - 40;
+    burst_pressure = Data.Burst_Pressure(burstInd);
     
     bursttime = Data.Burst_Time(burstInd);
 
