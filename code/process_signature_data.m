@@ -52,7 +52,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 89:93 % length(file_list)
+for fi = 90 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -86,26 +86,13 @@ for fi = 89:93 % length(file_list)
 
         % call Pwaves.m to calculate wave statistics
         [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
-        
-        % quality control from Jim and Sam's code
-        if ~isnan(E)
-            bt = polyfit(log(f(f>0.3)),log(E(f>0.3)),1);
-            tailshape = bt(1);
-        else
-            tailshape = inf;
-        end
 
-        if 1 % tailshape <= maxtailshapeexponent && Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
-            sigBurst(bcounter).sigwaveheight = Hs;
-            sigBurst(bcounter).peakwaveperiod = Tp;
-            sigBurst(bcounter).wavespectra.energy = E;
-            sigBurst(bcounter).wavespectra.freq = f;
-        else
-            sigBurst(bcounter).sigwaveheight = NaN;
-            sigBurst(bcounter).peakwaveperiod = NaN;
-            sigBurst(bcounter).wavespectra.energy = NaN(size(E));
-            sigBurst(bcounter).wavespectra.freq = NaN(size(f));
-        end
+        sigBurst(bcounter).sigwaveheight = Hs;
+        sigBurst(bcounter).peakwaveperiod = Tp;
+        sigBurst(bcounter).sigwaveheightig = Hig;
+        sigBurst(bcounter).peakwaveperiodig = Tig;
+        sigBurst(bcounter).wavespectra.energy = E;
+        sigBurst(bcounter).wavespectra.freq = f;
 
         % increment burst counter;
         bcounter = bcounter + 1;
@@ -334,12 +321,12 @@ figure(2);
 tiledlayout(3,1);
 
 nexttile;
-plot(burst_time,[sigBurst.peakwaveperiod],'color','black','linewidth',1);
+plot(burst_time,[sigBurst.peakwaveperiodig],'color','black','linewidth',1);
 datetick('x');
 ylabel('T_p (s)');
 
 nexttile;
-plot(burst_time,[sigBurst.sigwaveheight],'color','black','linewidth',1);
+plot(burst_time,[sigBurst.sigwaveheightig],'color','black','linewidth',1);
 datetick('x');
 ylabel('H_s (m)');
 
@@ -352,11 +339,6 @@ set(gca,'colorscale','log');
 set(gca,'yscale','log');
 datetick('x');
 ylabel('Frequency (Hz)');
-
-figure(3);
-plot(average_time,watertemp);
-datetick('x');
-ylabel('Temperature (\circC)');
 
 %{
 nexttile;

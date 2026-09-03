@@ -36,6 +36,8 @@ for b = 1:nb
     [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
     sigBurst(bcounter).sigwaveheight = Hs;
     sigBurst(bcounter).peakwaveperiod = Tp;
+    sigBurst(bcounter).sigwaveheightig = Hig;
+    sigBurst(bcounter).peakwaveperiodig = Tig;
 
     % increment burst counter;
     bcounter = bcounter + 1;
