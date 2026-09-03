@@ -24,17 +24,17 @@ vertical_bin_size = 0.5; % m
 vertical_bins = (1:vertical_bin_size:40);
 
 % specify destination directory for processed data
-destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
+destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/custom_processing/';
 
 % read file names
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
-file_name_base = 'S106174A002_let_s_go_*.mat';
+file_name_base = 'S106174A002_let_s_go_';
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
 
 % construct list of files to process
-file_list = dir([data_dir file_name_base]);
+file_list = dir([data_dir file_name_base '*.mat']);
 
 % Caution: whether matlab understands "file9, file10" etc. correctly seems 
 % to depend on the current lunar phase. The natsort package from the MATLAB
@@ -256,6 +256,8 @@ for i = 1:length(sigAverage)
     end
 end
 sigAverage(badavg) = [];
+
+save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
 
 %% plotting
 % extract data into useable matrices and vectors
