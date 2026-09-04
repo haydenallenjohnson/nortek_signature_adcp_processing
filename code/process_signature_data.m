@@ -52,7 +52,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 90 % length(file_list)
+for fi = 148 % 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -257,7 +257,18 @@ for i = 1:length(sigAverage)
 end
 sigAverage(badavg) = [];
 
-save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
+% remove bursts where instrument was out of water
+badburst = false(size(sigBurst));
+for i = 1:length(sigBurst)
+    if sigBurst(i).depth < min_depth
+        badburst(i) = true;
+    end
+end
+sigBurst(badburst) = [];
+
+
+% save data
+% save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
 
 %% plotting
 % extract data into useable matrices and vectors
@@ -323,12 +334,12 @@ figure(2);
 tiledlayout(3,1);
 
 nexttile;
-plot(burst_time,[sigBurst.peakwaveperiodig],'color','black','linewidth',1);
+plot(burst_time,[sigBurst.peakwaveperiod],'color','black','linewidth',1);
 datetick('x');
 ylabel('T_p (s)');
 
 nexttile;
-plot(burst_time,[sigBurst.sigwaveheightig],'color','black','linewidth',1);
+plot(burst_time,[sigBurst.sigwaveheight],'color','black','linewidth',1);
 datetick('x');
 ylabel('H_s (m)');
 
