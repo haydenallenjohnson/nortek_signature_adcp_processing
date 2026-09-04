@@ -10,7 +10,7 @@ function [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(p,fs)
 % for all variables.  Additionaly,  time series data must 
 % have at least 1024 points and all be the same size.
 %
-% Outputs will be '9999' for invalid results.
+% Outputs will be NaN for invalid results.
 %
 % Outputs can be supressed, in order, full usage is as follows:
 %
