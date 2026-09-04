@@ -52,7 +52,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 146:148 % 1:length(file_list)
+for fi = 1:3 % 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -87,21 +87,12 @@ for fi = 146:148 % 1:length(file_list)
         % call Pwaves.m to calculate wave statistics
         [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
 
+        sigBurst(bcounter).sigwaveheight = Hs;
+        sigBurst(bcounter).peakwaveperiod = Tp;
+        sigBurst(bcounter).sigwaveheightig = Hig;
+        sigBurst(bcounter).peakwaveperiodig = Tig;
+        sigBurst(bcounter).wavespectra.energy = E;
         sigBurst(bcounter).wavespectra.freq = f;
-
-        if 1 % Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
-            sigBurst(bcounter).sigwaveheight = Hs;
-            sigBurst(bcounter).peakwaveperiod = Tp;
-            sigBurst(bcounter).sigwaveheightig = Hig;
-            sigBurst(bcounter).peakwaveperiodig = Tig;
-            sigBurst(bcounter).wavespectra.energy = E;
-        else
-            sigBurst(bcounter).sigwaveheight = NaN;
-            sigBurst(bcounter).peakwaveperiod = NaN;
-            sigBurst(bcounter).sigwaveheightig = NaN;
-            sigBurst(bcounter).peakwaveperiodig = NaN;
-            sigBurst(bcounter).wavespectra.energy = NaN(size(E));
-        end
 
         % increment burst counter;
         bcounter = bcounter + 1;
