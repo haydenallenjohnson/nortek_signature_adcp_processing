@@ -123,14 +123,14 @@ E( f > maxf ) = [];
 f( f > maxf ) = [];
 
 
-else % if not enough points or sufficent sampling rate or data, give 9999
+else % if not enough points or sufficent sampling rate or data, give NaN
   
-     Hs = 9999;
-     Tp = 9999; 
-     Hig = 9999;
-     Tig = 9999; 
-     E = 9999; 
-     f = 9999;
+     Hs = NaN;
+     Tp = NaN; 
+     Hig = NaN;
+     Tig = NaN; 
+     E = NaN; 
+     f = NaN;
 
 end
 
