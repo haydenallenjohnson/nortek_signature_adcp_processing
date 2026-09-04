@@ -12,7 +12,7 @@ beam_angle = 25;
 % processing parameters
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
-min_depth = 4; % meters, exclude data when instrument is shallower than this
+min_depth = 38; % meters, exclude data when instrument is shallower than this
 maxwaveperiod = 20; % max wave period allowed during final screening, usually 20 s
 minwaveperiod = 2; % min wave period allowed during final screening, usually 2 s 
 minwaveheight = 0.2; % smallest wave height observable, usually 0.2 m 
@@ -52,7 +52,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 148 % 1:length(file_list)
+for fi = 146:148 % 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -87,22 +87,22 @@ for fi = 148 % 1:length(file_list)
         % call Pwaves.m to calculate wave statistics
         [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
 
-        if Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
+        sigBurst(bcounter).wavespectra.freq = f;
+
+        if 1 % Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
             sigBurst(bcounter).sigwaveheight = Hs;
             sigBurst(bcounter).peakwaveperiod = Tp;
             sigBurst(bcounter).sigwaveheightig = Hig;
             sigBurst(bcounter).peakwaveperiodig = Tig;
             sigBurst(bcounter).wavespectra.energy = E;
-            sigBurst(bcounter).wavespectra.freq = f;
         else
             sigBurst(bcounter).sigwaveheight = NaN;
             sigBurst(bcounter).peakwaveperiod = NaN;
             sigBurst(bcounter).sigwaveheightig = NaN;
             sigBurst(bcounter).peakwaveperiodig = NaN;
             sigBurst(bcounter).wavespectra.energy = NaN(size(E));
-            sigBurst(bcounter).wavespectra.freq = NaN(size(f));
         end
-        
+
         % increment burst counter;
         bcounter = bcounter + 1;
     end
