@@ -13,10 +13,6 @@ beam_angle = 25;
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
 min_depth = 38; % meters, exclude data when instrument is shallower than this
-maxwaveperiod = 20; % max wave period allowed during final screening, usually 20 s
-minwaveperiod = 2; % min wave period allowed during final screening, usually 2 s 
-minwaveheight = 0.2; % smallest wave height observable, usually 0.2 m 
-maxtailshapeexponent = -2.5;  % max value for f^q in the tail (f> 0.3 Hz), theoretically -4 
 
 % specify vertical bin grid
 doff = 0.25; % Steve's estimate
