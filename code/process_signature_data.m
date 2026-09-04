@@ -87,13 +87,22 @@ for fi = 148 % 1:length(file_list)
         % call Pwaves.m to calculate wave statistics
         [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
 
-        sigBurst(bcounter).sigwaveheight = Hs;
-        sigBurst(bcounter).peakwaveperiod = Tp;
-        sigBurst(bcounter).sigwaveheightig = Hig;
-        sigBurst(bcounter).peakwaveperiodig = Tig;
-        sigBurst(bcounter).wavespectra.energy = E;
-        sigBurst(bcounter).wavespectra.freq = f;
-
+        if Hs > minwaveheight && Tp > minwaveperiod && Tp < maxwaveperiod
+            sigBurst(bcounter).sigwaveheight = Hs;
+            sigBurst(bcounter).peakwaveperiod = Tp;
+            sigBurst(bcounter).sigwaveheightig = Hig;
+            sigBurst(bcounter).peakwaveperiodig = Tig;
+            sigBurst(bcounter).wavespectra.energy = E;
+            sigBurst(bcounter).wavespectra.freq = f;
+        else
+            sigBurst(bcounter).sigwaveheight = NaN;
+            sigBurst(bcounter).peakwaveperiod = NaN;
+            sigBurst(bcounter).sigwaveheightig = NaN;
+            sigBurst(bcounter).peakwaveperiodig = NaN;
+            sigBurst(bcounter).wavespectra.energy = NaN(size(E));
+            sigBurst(bcounter).wavespectra.freq = NaN(size(f));
+        end
+        
         % increment burst counter;
         bcounter = bcounter + 1;
     end
