@@ -1,3 +1,17 @@
+% Script to process Signature ADCP data when extreme tilt may render one
+% beam unusable. The basic processing scheme is adapted from Jim Thomson
+% and Sam Brenner's processing code, available here: 
+% https://github.com/SASlabgroup/NortekCodes 
+% Velocity and amplitude are interpolated along each beam onto a specified
+% depth grid. At each depth grid point, a 3D velocity is calculated if
+% there are at least three beams above the correlation threshold and with
+% tilt less than the maximum specified allowable value.
+
+% Hayden Johnson, 2026-09-08
+
+% -------------------------------------------------------------------------
+% USER-SPECIFIED PARAMETERS
+
 % specify location
 latitude = 71.3274;
 longitude = -156.8791;
