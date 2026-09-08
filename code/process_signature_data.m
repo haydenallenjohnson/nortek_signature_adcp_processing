@@ -26,6 +26,8 @@ destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/custom_proces
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
 file_name_base = 'S106174A002_let_s_go_';
 
+save_data = true;
+
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
 
@@ -48,7 +50,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 1:3 % 1:length(file_list)
+for fi = 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -264,7 +266,9 @@ sigBurst(badburst) = [];
 
 
 % save data
-% save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
+if save_data
+    save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
+end
 
 %% plotting
 % extract data into useable matrices and vectors
@@ -325,6 +329,8 @@ cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
 
+save([destination_dir file_name_base 'all_processed_3beam_velocity.fig']);
+
 % plot wave data
 figure(2);
 tiledlayout(3,1);
@@ -348,6 +354,8 @@ set(gca,'colorscale','log');
 set(gca,'yscale','log');
 datetick('x');
 ylabel('Frequency (Hz)');
+
+save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
 
 %{
 nexttile;
