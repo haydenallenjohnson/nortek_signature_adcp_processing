@@ -7,6 +7,19 @@
 % there are at least three beams above the correlation threshold and with
 % tilt less than the maximum specified allowable value.
 
+% Note that wave height and period are calculated here using the Pwaves
+% function written by Jim Thomson. Attenuation of pressure waves at 40 m
+% depth is appreciable, so the values of significant wave height and, to a
+% lesser extent, wave period, output here are not reliable. I have included 
+% them, however, because I think at least the relative values mean 
+% something and may be illustrative of trends in the data. It is possible
+% to correct for this attenuation to an extent, but I have not implemented
+% this yet. 
+
+% The output into the processed data is two structures, sigAverage and
+% sigBurst, which contain the processed and averaged data from the average
+% and burst sampling modes respectively.
+
 % Hayden Johnson, 2026-09-08
 
 % -------------------------------------------------------------------------
@@ -45,7 +58,36 @@ save_data = true;
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
 
-% construct list of files to process
+%% descriptions of output variables
+sigAverageDescriptions = struct;
+sigAverageDescriptions.time = 'Measurement time (MATLAB datenum)';
+sigAverageDescriptions.lat = 'Intrument latitude (degrees N)';
+sigAverageDescriptions.lon = 'Intrument latitude (degrees E)';
+sigAverageDescriptions.watertemp = 'Water temperature (degrees Celsius)';
+sigAverageDescriptions.depth = 'Instrument depth calculated from pressure sensor (m)';
+sigAverageDescriptions.z = 'Vertical height of each data bin above estimated sea floor (m)';
+sigAverageDescriptions.east = 'East component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.north = 'North component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.up = 'Upward component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.backscatter1 = 'Beam 1 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter2 = 'Beam 2 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter3 = 'Beam 3 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter4 = 'Beam 4 backscatter amplitude at each depth bin (dB)';
+
+sigBurstDescriptions = struct;
+sigBurstDescriptions.time = 'Measurement time (MATLAB datenum)';
+sigBurstDescriptions.lat = 'Intrument latitude (degrees N)';
+sigBurstDescriptions.lon = 'Intrument latitude (degrees E)';
+sigBurstDescriptions.watertemp = 'Water temperature (degrees Celsius)';
+sigBurstDescriptions.depth = 'Instrument depth calculated from pressure sensor (m)';
+sigBurstDescriptions.sigwaveheight = 'Significant wave height for surface wave band (f>0.05 Hz) (m)';
+sigBurstDescriptions.peakwaveperiod = 'Peak wave period for surface wave band (f>0.05 Hz) (s)';
+sigBurstDescriptions.sigwaveheightig = 'Significant wave height for infragravity wave band (f<0.05 Hz) (m)';
+sigBurstDescriptions.peakwaveperiodig = 'Peak wave period for infragravity wave band (f<0.05 Hz) (s)';
+sigBurstDescriptions.wavespectra.energy = 'Power spectral densiy of wave energy (m^2/Hz)';
+sigBurstDescriptions.wavespectra.freq = 'Frequency array for PSD (Hz)';
+
+%% construct list of files to process
 file_list = dir([data_dir file_name_base '*.mat']);
 
 % Caution: whether matlab understands "file9, file10" etc. correctly seems 
@@ -278,10 +320,9 @@ for i = 1:length(sigBurst)
 end
 sigBurst(badburst) = [];
 
-
-% save data
+%% save data
 if save_data
-    save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst');
+    save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst','sigAverageDescriptions','sigBurstDescriptions');
 end
 
 %% plotting
@@ -363,7 +404,7 @@ nexttile;
 pcolor(burst_time,freq,energy','edgecolor','none');
 colormap(cmocean('amp'));
 cb = colorbar;
-cb.Label.String = 'PSD (Pa^2/Hz)';
+cb.Label.String = 'PSD (m^2/Hz)';
 set(gca,'colorscale','log');
 set(gca,'yscale','log');
 datetick('x');
