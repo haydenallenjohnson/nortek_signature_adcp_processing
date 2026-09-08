@@ -18,7 +18,12 @@
 
 % The output into the processed data is two structures, sigAverage and
 % sigBurst, which contain the processed and averaged data from the average
-% and burst sampling modes respectively.
+% and burst sampling modes respectively. The structures
+% sigAverageDescriptions and sigBurstDescriptions provide descriptions and
+% units for each of the quantities in the respective data structures.
+
+% This code is maintained in a Github repository:
+% https://github.com/haydenallenjohnson/nortek_signature_adcp_processing
 
 % Hayden Johnson, 2026-09-08
 
@@ -58,7 +63,7 @@ save_data = true;
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
 
-%% descriptions of output variables
+% descriptions of output variables
 sigAverageDescriptions = struct;
 sigAverageDescriptions.time = 'Measurement time (MATLAB datenum)';
 sigAverageDescriptions.lat = 'Intrument latitude (degrees N)';
@@ -411,13 +416,3 @@ datetick('x');
 ylabel('Frequency (Hz)');
 
 save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
-
-%{
-nexttile;
-pcolor(time,vertical_bins,w','EdgeColor','none');
-cb = colorbar;
-cb.Label.String = 'Up (m/s)';
-clim(max(abs(w),[],'all')*[-1 1]);
-datetick('x');
-ylabel ('z (m)');
-%}
