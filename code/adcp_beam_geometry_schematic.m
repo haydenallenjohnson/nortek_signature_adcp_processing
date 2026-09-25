@@ -1,13 +1,16 @@
+% load file
+load('C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/S106174A002_let_s_go_avgd.mat');
+
 % specify ADCP geometry
 beam_angle = 25;
 
 % specify ADCP orientation
-heading = 260;
-pitch = 0.24;
-roll = 52;
+heading = median(Data.Average_Heading)
+pitch = median(Data.Average_Pitch)
+roll = median(Data.Average_Roll)
 declination = 10.5;
 
-water_depth = 42;
+water_depth = median(Data.Average_Pressure)
 
 % create rotation matrices
 R_heading = create_rotation_matrix('z',-heading);
@@ -16,12 +19,8 @@ R_roll = create_rotation_matrix('x',roll);
 
 R_enu = create_rotation_matrix('z',90 - declination);
 
-% This is the real transformation
+% create combined transformation matrix from instrument frame to enu
 R_combined = R_enu*R_heading*R_pitch*R_roll;
-
-% wrong transformations for testing and verifying incorrectness
-% R_combined = R_enu*R_roll*R_pitch*R_heading;
-% R_combined = R_heading*R_pitch*R_roll*R_enu;
 
 % calculate beam locations in ADCP coordinate system
 z = (0:70);
