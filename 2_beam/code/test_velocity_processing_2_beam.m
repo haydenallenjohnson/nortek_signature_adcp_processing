@@ -3,8 +3,8 @@ latitude = 71.3274;
 longitude = -156.8791;
 
 % specify magnetic north declination
-declination = 10.5; % degrees, positive if magnetic north is east of true north
-% value 10.5 calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+declination = 9.9; % degrees, positive if magnetic north is east of true north
+% value 9.9 calculated for 2026-03-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
 
 % specify beam angle (degrees) of transducer faces relative to instrument z axis
 beam_angle = 25;
@@ -20,9 +20,12 @@ vertical_bin_size = 0.5; % m
 vertical_bins = (1:vertical_bin_size:40);
 
 % specify destination directory for processed data
-destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
+destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/processed_data/';
 
 % read file names
+% data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/data_matlab_format_with_coord_trans/';
+% file_name_base = 'S106174A004_20250910v2_*.mat';
+
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
 file_name_base = 'S106174A002_let_s_go_*.mat';
 
@@ -148,34 +151,31 @@ for fi = 90 % length(file_list)
                 beam(j).vel_at_vertical_bins(trim_ind) = NaN;
                 beam(j).backscatter_at_vertical_bins(trim_ind) = NaN;
             
-                % check if any beams should be excluded based on tilt
-                if beam(j).unit_vector_enu(3) < cosd(max_beam_tilt)
-                    beam(j).exclude = true;
+                % check which beams should be included based on tilt
+                if beam(j).unit_vector_enu(3) > cosd(max_beam_tilt)
+                    beam(j).include = true;
                 else 
-                    beam(j).exclude = false;
+                    beam(j).include = false;
                 end
             end
             
-            exclude_array = [beam.exclude];
-            if sum(exclude_array) > 1
-                vector_velocity_xyz = NaN(3,length(vertical_bins));
+            include_array = [1 0 0 1] % [beam.include];
+            if sum(include_array) ~= 2
+                vector_velocity_en = NaN(2,length(vertical_bins));
             else
-                if sum(exclude_array) == 0
-                    exclude_beam = 0;
-                elseif sum(exclude_array) == 1 
-                    exclude_beam = find(exclude_array);
+                if sum(include_array) == 2
+                    beam_ind = find(include_array);
+                    E = [beam(beam_ind(1)).unit_vector_enu(1:2) beam(beam_ind(2)).unit_vector_enu(1:2)];
+                    b = [beam(beam_ind(1)).vel_at_vertical_bins; 
+                        beam(beam_ind(2)).vel_at_vertical_bins];
+                    vector_velocity_en = (E.')\b;
                 end
-                % convert beam velocities to instrument frame (xyz) velocity
-                vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_vertical_bins,beam(2).vel_at_vertical_bins,beam(3).vel_at_vertical_bins,beam(4).vel_at_vertical_bins,beam_angle,exclude_beam);
             end
     
-            % convert instrument frame (xyz) velocity to ENU
-            vector_velocity_enu = R_xyz_to_enu*vector_velocity_xyz;
-    
             % extract velocity components and populate arrays
-            east(i,:) = vector_velocity_enu(1,:);
-            north(i,:) = vector_velocity_enu(2,:);
-            up(i,:) = vector_velocity_enu(3,:);
+            east(i,:) = vector_velocity_en(1,:);
+            north(i,:) = vector_velocity_en(2,:);
+            up(i,:) = NaN(size(vertical_bins));
     
             % extract backscatter from each beam 
             backscatter1(i,:) = beam(1).backscatter_at_vertical_bins;
@@ -225,7 +225,7 @@ for i = 1:length(sigAverage)
 end
 
 %% create plot
-figure(1);
+figure(2);
 
 % set velocity colour limits
 combined_vel_array = [u v];
@@ -252,7 +252,7 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(time,vertical_bins,backscatter4','edgecolor','none');
+pcolor(time,vertical_bins,backscatter3','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
