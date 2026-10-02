@@ -159,7 +159,7 @@ for fi = 90 % length(file_list)
                 end
             end
             
-            include_array = [1 0 0 1] % [beam.include];
+            include_array = [1 0 0 1]; % [beam.include];
             if sum(include_array) ~= 2
                 vector_velocity_en = NaN(2,length(vertical_bins));
             else
@@ -252,7 +252,7 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(time,vertical_bins,backscatter3','edgecolor','none');
+pcolor(time,vertical_bins,backscatter4','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
