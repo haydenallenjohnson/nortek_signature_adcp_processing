@@ -161,7 +161,7 @@ for fi = 90 % length(file_list)
             include_array = [beam.include];
             beam_ind = find(include_array);
             if sum(include_array) < 2
-                vector_velocity_en = NaN(2,length(vertical_bins));
+                vector_velocity_enu = NaN(2,length(vertical_bins));
 
             elseif sum(include_array) == 2
                 E = [beam(beam_ind(1)).unit_vector_enu(1:2) beam(beam_ind(2)).unit_vector_enu(1:2)];
@@ -186,11 +186,6 @@ for fi = 90 % length(file_list)
                 north(i,:) = vector_velocity_enu(2,:);
                 up(i,:) = vector_velocity_enu(3,:);
             end
-    
-            % extract velocity components and populate arrays
-            east(i,:) = vector_velocity_enu(1,:);
-            north(i,:) = vector_velocity_enu(2,:);
-            up(i,:) = vector_velocity_enu(3,:);
     
             % extract backscatter from each beam 
             backscatter1(i,:) = beam(1).backscatter_at_vertical_bins;
