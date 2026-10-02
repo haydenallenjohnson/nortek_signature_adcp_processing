@@ -28,6 +28,7 @@ file_name_base = 'S106174A002_let_s_go_*.mat';
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
+tic
 
 % construct list of files to process
 file_list = dir([data_dir file_name_base]);
@@ -208,6 +209,8 @@ for i = 1:length(sigAverage)
     end
 end
 sigAverage(badavg) = [];
+
+toc
 
 % extract data into useable matrices and vectors
 [u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(vertical_bins)));
