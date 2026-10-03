@@ -58,7 +58,7 @@ destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/custom_proces
 data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
 file_name_base = 'S106174A002_let_s_go_';
 
-save_data = true;
+save_data = false;
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
@@ -111,7 +111,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 1:length(file_list)
+for fi = 88:92 % 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -256,33 +256,42 @@ for fi = 1:length(file_list)
                 beam(j).backscatter_at_vertical_bins(trim_ind) = NaN;
             
                 % check if any beams should be excluded based on tilt
-                if beam(j).unit_vector_enu(3) < cosd(max_beam_tilt)
-                    beam(j).exclude = true;
+                % check which beams should be included based on tilt
+                if beam(j).unit_vector_enu(3) > cosd(max_beam_tilt)
+                    beam(j).include = true;
                 else 
-                    beam(j).exclude = false;
+                    beam(j).include = false;
                 end
             end
-            
-            exclude_array = [beam.exclude];
-            if sum(exclude_array) > 1
-                vector_velocity_xyz = NaN(3,length(vertical_bins));
-            else
-                if sum(exclude_array) == 0
-                    exclude_beam = 0;
-                elseif sum(exclude_array) == 1 
-                    exclude_beam = find(exclude_array);
-                end
-                % convert beam velocities to instrument frame (xyz) velocity
-                vector_velocity_xyz = convert_beam_to_xyz_velocity(beam(1).vel_at_vertical_bins,beam(2).vel_at_vertical_bins,beam(3).vel_at_vertical_bins,beam(4).vel_at_vertical_bins,beam_angle,exclude_beam);
+
+            include_array = [beam.include];
+            beam_ind = find(include_array);
+            if sum(include_array) < 2
+                vector_velocity_enu = NaN(2,length(vertical_bins));
+
+            elseif sum(include_array) == 2
+                E = [beam(beam_ind(1)).unit_vector_enu(1:2) beam(beam_ind(2)).unit_vector_enu(1:2)];
+                b = [beam(beam_ind(1)).vel_at_vertical_bins; 
+                    beam(beam_ind(2)).vel_at_vertical_bins];
+                vector_velocity_en = (E.')\b;
+
+                % extract velocity components and populate arrays
+                east(i,:) = vector_velocity_en(1,:);
+                north(i,:) = vector_velocity_en(2,:);
+                up(i,:) = NaN(size(vertical_bins));
+
+            elseif sum(include_array) == 3
+                E = [beam(beam_ind(1)).unit_vector_enu beam(beam_ind(2)).unit_vector_enu beam(beam_ind(3)).unit_vector_enu];
+                b = [beam(beam_ind(1)).vel_at_vertical_bins; 
+                    beam(beam_ind(2)).vel_at_vertical_bins;
+                    beam(beam_ind(3)).vel_at_vertical_bins];
+                vector_velocity_enu = (E.')\b;
+
+                % extract velocity components and populate arrays
+                east(i,:) = vector_velocity_enu(1,:);
+                north(i,:) = vector_velocity_enu(2,:);
+                up(i,:) = vector_velocity_enu(3,:);
             end
-    
-            % convert instrument frame (xyz) velocity to ENU
-            vector_velocity_enu = R_xyz_to_enu*vector_velocity_xyz;
-    
-            % extract velocity components and populate arrays
-            east(i,:) = vector_velocity_enu(1,:);
-            north(i,:) = vector_velocity_enu(2,:);
-            up(i,:) = vector_velocity_enu(3,:);
     
             % extract backscatter from each beam 
             backscatter1(i,:) = beam(1).backscatter_at_vertical_bins;
@@ -389,7 +398,7 @@ cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
 
-save([destination_dir file_name_base 'all_processed_3beam_velocity.fig']);
+% save([destination_dir file_name_base 'all_processed_3beam_velocity.fig']);
 
 % plot wave data
 figure(2);
@@ -415,4 +424,4 @@ set(gca,'yscale','log');
 datetick('x');
 ylabel('Frequency (Hz)');
 
-save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
+% save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
