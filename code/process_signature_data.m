@@ -5,7 +5,9 @@
 % Velocity and amplitude are interpolated along each beam onto a specified
 % depth grid. At each depth grid point, a 3D velocity is calculated if
 % there are at least three beams above the correlation threshold and with
-% tilt less than the maximum specified allowable value.
+% tilt less than the maximum specified allowable value. If there are only
+% two usable beams, then a horizontal velocity is calculated assuming w=0,
+% and the output vertical velocity is w=NaN.
 
 % Note that wave height and period are calculated here using the Pwaves
 % function written by Jim Thomson. Attenuation of pressure waves at 40 m
