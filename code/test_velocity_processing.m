@@ -177,7 +177,7 @@ for fi = 90 % length(file_list)
             elseif sum(include_array) == 3
                 E = [beam(beam_ind(1)).unit_vector_enu beam(beam_ind(2)).unit_vector_enu beam(beam_ind(3)).unit_vector_enu];
                 b = [beam(beam_ind(1)).vel_at_vertical_bins; 
-                    beam(beam_ind(2)).vel_at_vertical_bins
+                    beam(beam_ind(2)).vel_at_vertical_bins;
                     beam(beam_ind(3)).vel_at_vertical_bins];
                 vector_velocity_enu = (E.')\b;
 
