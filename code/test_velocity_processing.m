@@ -20,11 +20,11 @@ vertical_bin_size = 0.5; % m
 vertical_bins = (1:vertical_bin_size:40);
 
 % specify destination directory for processed data
-destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/processed_data/';
+destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/processed_data/';
 
 % read file names
-data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
-file_name_base = 'S106174A002_let_s_go_*.mat';
+data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/data_matlab_format_with_coord_trans/';
+file_name_base = 'S106174A004_20250910v2_edited_*.mat';
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
@@ -48,7 +48,7 @@ acounter = 1;
 % initialize sigAverage structure
 sigAverage = struct;
 
-for fi = 90 % length(file_list)
+for fi = 20 % length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -264,19 +264,21 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(time,vertical_bins,backscatter4','edgecolor','none');
+pcolor(time,vertical_bins,backscatter3','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
 
+
 %{
-nexttile;
+ax3 = nexttile;
 pcolor(time,vertical_bins,w','EdgeColor','none');
+colormap(ax3,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'Up (m/s)';
-clim(max(abs(w),[],'all')*[-1 1]);
+% clim(prctile(abs(w),99,'all')*[-1 1]);
 datetick('x');
 ylabel ('z (m)');
 %}

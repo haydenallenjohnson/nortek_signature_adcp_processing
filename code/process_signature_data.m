@@ -37,8 +37,10 @@ latitude = 71.3274;
 longitude = -156.8791;
 
 % specify magnetic north declination
-declination = 10.5; % degrees, positive if magnetic north is east of true north
+declination = 9.9; % degrees, positive if magnetic north is east of true north
 % value 10.5 calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+% value 9.9 calculated for 2026-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+
 
 % specify beam angle (degrees) of transducer faces relative to instrument z axis
 beam_angle = 25;
@@ -54,13 +56,13 @@ vertical_bin_size = 0.5; % m
 vertical_bins = (1:vertical_bin_size:40);
 
 % specify destination directory for processed data
-destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/custom_processing/';
+destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/processed_data/';
 
 % read file names
-data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
-file_name_base = 'S106174A002_let_s_go_';
+data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/data_matlab_format_with_coord_trans/';
+file_name_base = 'S106174A004_20250910v2_edited_';
 
-save_data = false;
+save_data = true;
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
@@ -113,7 +115,7 @@ bcounter = 1;
 sigAverage = struct;
 sigBurst = struct;
 
-for fi = 88:92 % 1:length(file_list)
+for fi = 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
@@ -338,7 +340,7 @@ sigBurst(badburst) = [];
 
 %% save data
 if save_data
-    save([destination_dir file_name_base 'all_processed_3beam.mat'],'sigAverage','sigBurst','sigAverageDescriptions','sigBurstDescriptions');
+    save([destination_dir file_name_base 'all_processed.mat'],'sigAverage','sigBurst','sigAverageDescriptions','sigBurstDescriptions');
 end
 
 %% plotting
@@ -393,12 +395,14 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(average_time,vertical_bins,backscatter4','edgecolor','none');
+pcolor(average_time,vertical_bins,backscatter3','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
+
+linkaxes([ax1 ax2 ax3],'xy');
 
 % save([destination_dir file_name_base 'all_processed_3beam_velocity.fig']);
 
@@ -425,5 +429,7 @@ set(gca,'colorscale','log');
 set(gca,'yscale','log');
 datetick('x');
 ylabel('Frequency (Hz)');
+
+linkaxes([ax1 ax2 ax3],'x');
 
 % save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
