@@ -1,10 +1,45 @@
+% Script to process Signature ADCP data when extreme tilt may render one
+% beam unusable. The basic processing scheme is adapted from Jim Thomson
+% and Sam Brenner's processing code, available here: 
+% https://github.com/SASlabgroup/NortekCodes 
+% Velocity and amplitude are interpolated along each beam onto a specified
+% depth grid. At each depth grid point, a 3D velocity is calculated if
+% there are at least three beams above the correlation threshold and with
+% tilt less than the maximum specified allowable value. If there are only
+% two usable beams, then a horizontal velocity is calculated assuming w=0,
+% and the output vertical velocity is w=NaN.
+
+% Note that wave height and period are calculated here using the Pwaves
+% function written by Jim Thomson. Attenuation of pressure waves at 40 m
+% depth is appreciable, so the values of significant wave height and, to a
+% lesser extent, wave period, output here are not reliable. I have included 
+% them, however, because I think at least the relative values mean 
+% something and may be illustrative of trends in the data. It is possible
+% to correct for this attenuation to an extent, but I have not implemented
+% this yet. 
+
+% The output into the processed data is two structures, sigAverage and
+% sigBurst, which contain the processed and averaged data from the average
+% and burst sampling modes respectively. The structures
+% sigAverageDescriptions and sigBurstDescriptions provide descriptions and
+% units for each of the quantities in the respective data structures.
+
+% This code is maintained in a Github repository:
+% https://github.com/haydenallenjohnson/nortek_signature_adcp_processing
+
+% Hayden Johnson, 2026-10-13
+
+% -------------------------------------------------------------------------
+% USER-SPECIFIED PARAMETERS
+
 % specify location
 latitude = 71.3274;
 longitude = -156.8791;
 
 % specify magnetic north declination
 declination = 9.9; % degrees, positive if magnetic north is east of true north
-% value 9.9 calculated for 2026-03-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+% value 10.5 calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
+% value 9.9 calculated for 2026-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
 
 % specify beam angle (degrees) of transducer faces relative to instrument z axis
 beam_angle = 25;
@@ -12,7 +47,7 @@ beam_angle = 25;
 % processing parameters
 mincorr = 40; % units are %, this is correlation of 0.4. Value taken from Jim's processing code
 max_beam_tilt = 65; % maximum allowable angle of tilt from horizontal for an individual beam (degrees)
-min_depth = 4; % meters, exclude data when instrument is shallower than this
+min_depth = 38; % meters, exclude data when instrument is shallower than this
 
 % specify vertical bin grid
 doff = 0.25; % Steve's estimate
@@ -23,17 +58,45 @@ vertical_bins = (1:vertical_bin_size:40);
 destination_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/processed_data/';
 
 % read file names
-% data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/data_matlab_format_with_coord_trans/';
-% file_name_base = 'S106174A004_20250910v2_*.mat';
+data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/adcp_2025-2026/data_matlab_format_with_coord_trans/';
+file_name_base = 'S106174A004_20250910v2_edited_';
 
-data_dir = 'C:/Users/hjohn/Documents/work/utqiagvik_mooring/Matlab_Format_with_coord_transforms/';
-file_name_base = 'S106174A002_let_s_go_*.mat';
+save_data = true;
 
 % END OF USER-SPECIFIED PARAMETERS
 % -------------------------------------------------------------------------
 
-% construct list of files to process
-file_list = dir([data_dir file_name_base]);
+% descriptions of output variables
+sigAverageDescriptions = struct;
+sigAverageDescriptions.time = 'Measurement time (MATLAB datenum)';
+sigAverageDescriptions.lat = 'Intrument latitude (degrees N)';
+sigAverageDescriptions.lon = 'Intrument latitude (degrees E)';
+sigAverageDescriptions.watertemp = 'Water temperature (degrees Celsius)';
+sigAverageDescriptions.depth = 'Instrument depth calculated from pressure sensor (m)';
+sigAverageDescriptions.z = 'Vertical height of each data bin above estimated sea floor (m)';
+sigAverageDescriptions.east = 'East component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.north = 'North component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.up = 'Upward component of water velocity at each depth bin (m/s)';
+sigAverageDescriptions.backscatter1 = 'Beam 1 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter2 = 'Beam 2 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter3 = 'Beam 3 backscatter amplitude at each depth bin (dB)';
+sigAverageDescriptions.backscatter4 = 'Beam 4 backscatter amplitude at each depth bin (dB)';
+
+sigBurstDescriptions = struct;
+sigBurstDescriptions.time = 'Measurement time (MATLAB datenum)';
+sigBurstDescriptions.lat = 'Intrument latitude (degrees N)';
+sigBurstDescriptions.lon = 'Intrument latitude (degrees E)';
+sigBurstDescriptions.watertemp = 'Water temperature (degrees Celsius)';
+sigBurstDescriptions.depth = 'Instrument depth calculated from pressure sensor (m)';
+sigBurstDescriptions.sigwaveheight = 'Significant wave height for surface wave band (f>0.05 Hz) (m)';
+sigBurstDescriptions.peakwaveperiod = 'Peak wave period for surface wave band (f>0.05 Hz) (s)';
+sigBurstDescriptions.sigwaveheightig = 'Significant wave height for infragravity wave band (f<0.05 Hz) (m)';
+sigBurstDescriptions.peakwaveperiodig = 'Peak wave period for infragravity wave band (f<0.05 Hz) (s)';
+sigBurstDescriptions.wavespectra.energy = 'Power spectral densiy of wave energy (m^2/Hz)';
+sigBurstDescriptions.wavespectra.freq = 'Frequency array for PSD (Hz)';
+
+%% construct list of files to process
+file_list = dir([data_dir file_name_base '*.mat']);
 
 % Caution: whether matlab understands "file9, file10" etc. correctly seems 
 % to depend on the current lunar phase. The natsort package from the MATLAB
@@ -43,17 +106,61 @@ file_list = natsortfiles(file_list);
 % exclude average file (last in alphanumeric ordering)
 file_list = file_list(1:end-1);
 
-% initialize average counter (across multiple files)
+% initialize counters (across multiple files)
 acounter = 1;
+bcounter = 1;
 
-% initialize sigAverage structure
+% initialize sigAverage and sigBurst structures
 sigAverage = struct;
+sigBurst = struct;
 
-for fi = 90 % length(file_list)
+for fi = 1:length(file_list)
 
     % load file
     disp(['file ' num2str(fi) ' of ' num2str(length(file_list))])
     load([data_dir file_list(fi).name]);
+
+    %% process burst data
+    % Find indices for each burst
+    firstindex = find(Data.Burst_EnsembleCount==1);
+    spacing = mean(diff(firstindex));
+    if isnan(spacing) % exception for only one burst in file
+        spacing=length(Data.Burst_EnsembleCount)-firstindex; 
+    end 
+    nb = length(firstindex);
+
+    for b = 1:nb
+
+        % select burst data
+        burstInd = firstindex(b) + (1:spacing) - 1;
+        burstInd( burstInd > length(Data.Burst_Time) ) = [];
+
+        burst_sampling_rate = double(Config.Burst_SamplingRate);
+        burst_pressure = Data.Burst_Pressure(burstInd);
+        burst_time = Data.Burst_Time(burstInd);
+
+        % meta data
+        sigBurst(bcounter).time = burst_time(1);
+        sigBurst(bcounter).lat = latitude;
+        sigBurst(bcounter).lon = longitude;
+        sigBurst(bcounter).watertemp = median( Data.Burst_Temperature(burstInd) );
+        sigBurst(bcounter).depth = median( Data.Burst_Pressure(burstInd) );
+
+        % call Pwaves.m to calculate wave statistics
+        [ Hs, Tp, Hig, Tig, E, f ] = Pwaves(burst_pressure,burst_sampling_rate);
+
+        sigBurst(bcounter).sigwaveheight = Hs;
+        sigBurst(bcounter).peakwaveperiod = Tp;
+        sigBurst(bcounter).sigwaveheightig = Hig;
+        sigBurst(bcounter).peakwaveperiodig = Tig;
+        sigBurst(bcounter).wavespectra.energy = E;
+        sigBurst(bcounter).wavespectra.freq = f;
+
+        % increment burst counter;
+        bcounter = bcounter + 1;
+    end
+
+    %% process average data
 
     % create array of cell position along beam
     cell_distance_along_beam = (Config.Average_BlankingDistance + Config.Average_CellSize.*(1:double(Data.Average_NCells(1))))./cosd(beam_angle);
@@ -151,6 +258,7 @@ for fi = 90 % length(file_list)
                 beam(j).vel_at_vertical_bins(trim_ind) = NaN;
                 beam(j).backscatter_at_vertical_bins(trim_ind) = NaN;
             
+                % check if any beams should be excluded based on tilt
                 % check which beams should be included based on tilt
                 if beam(j).unit_vector_enu(3) > cosd(max_beam_tilt)
                     beam(j).include = true;
@@ -158,24 +266,35 @@ for fi = 90 % length(file_list)
                     beam(j).include = false;
                 end
             end
-            
-            include_array = [1 0 0 1]; % [beam.include];
-            if sum(include_array) ~= 2
-                vector_velocity_en = NaN(2,length(vertical_bins));
-            else
-                if sum(include_array) == 2
-                    beam_ind = find(include_array);
-                    E = [beam(beam_ind(1)).unit_vector_enu(1:2) beam(beam_ind(2)).unit_vector_enu(1:2)];
-                    b = [beam(beam_ind(1)).vel_at_vertical_bins; 
-                        beam(beam_ind(2)).vel_at_vertical_bins];
-                    vector_velocity_en = (E.')\b;
-                end
+
+            include_array = [beam.include];
+            beam_ind = find(include_array);
+            if sum(include_array) < 2
+                vector_velocity_enu = NaN(2,length(vertical_bins));
+
+            elseif sum(include_array) == 2
+                E = [beam(beam_ind(1)).unit_vector_enu(1:2) beam(beam_ind(2)).unit_vector_enu(1:2)];
+                b = [beam(beam_ind(1)).vel_at_vertical_bins; 
+                    beam(beam_ind(2)).vel_at_vertical_bins];
+                vector_velocity_en = (E.')\b;
+
+                % extract velocity components and populate arrays
+                east(i,:) = vector_velocity_en(1,:);
+                north(i,:) = vector_velocity_en(2,:);
+                up(i,:) = NaN(size(vertical_bins));
+
+            elseif sum(include_array) == 3
+                E = [beam(beam_ind(1)).unit_vector_enu beam(beam_ind(2)).unit_vector_enu beam(beam_ind(3)).unit_vector_enu];
+                b = [beam(beam_ind(1)).vel_at_vertical_bins; 
+                    beam(beam_ind(2)).vel_at_vertical_bins;
+                    beam(beam_ind(3)).vel_at_vertical_bins];
+                vector_velocity_enu = (E.')\b;
+
+                % extract velocity components and populate arrays
+                east(i,:) = vector_velocity_enu(1,:);
+                north(i,:) = vector_velocity_enu(2,:);
+                up(i,:) = vector_velocity_enu(3,:);
             end
-    
-            % extract velocity components and populate arrays
-            east(i,:) = vector_velocity_en(1,:);
-            north(i,:) = vector_velocity_en(2,:);
-            up(i,:) = NaN(size(vertical_bins));
     
             % extract backscatter from each beam 
             backscatter1(i,:) = beam(1).backscatter_at_vertical_bins;
@@ -209,11 +328,26 @@ for i = 1:length(sigAverage)
 end
 sigAverage(badavg) = [];
 
+% remove bursts where instrument was out of water
+badburst = false(size(sigBurst));
+for i = 1:length(sigBurst)
+    if sigBurst(i).depth < min_depth
+        badburst(i) = true;
+    end
+end
+sigBurst(badburst) = [];
+
+%% save data
+if save_data
+    save([destination_dir file_name_base 'all_processed.mat'],'sigAverage','sigBurst','sigAverageDescriptions','sigBurstDescriptions');
+end
+
+%% plotting
 % extract data into useable matrices and vectors
-[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(zeros(length(sigAverage),length(vertical_bins)));
-[time,watertemp] = deal(zeros(length(sigAverage),1));
+[u,v,w,backscatter1,backscatter2,backscatter3,backscatter4] = deal(NaN(length(sigAverage),length(vertical_bins)));
+[average_time,watertemp] = deal(NaN(length(sigAverage),1));
 for i = 1:length(sigAverage)
-    time(i) = sigAverage(i).time;
+    average_time(i) = sigAverage(i).time;
     u(i,:) = sigAverage(i).east;
     v(i,:) = sigAverage(i).north;
     w(i,:) = sigAverage(i).up;
@@ -224,8 +358,16 @@ for i = 1:length(sigAverage)
     backscatter4(i,:) = sigAverage(i).backscatter4;
 end
 
-%% create plot
-figure(2);
+energy = NaN(length(sigBurst),length(sigBurst(1).wavespectra.energy));
+burst_time = NaN(length(sigBurst),1);
+for i = 1:length(sigBurst)
+    burst_time(i) = sigBurst(i).time;
+    energy(i,:) = sigBurst(i).wavespectra.energy;
+end
+freq = sigBurst(1).wavespectra.freq;
+
+% plot velocity and backscatter
+figure(1);
 
 % set velocity colour limits
 combined_vel_array = [u v];
@@ -234,7 +376,7 @@ vel_lims = max_color*[-1 1];
 
 tiledlayout(3,1);
 ax1 = nexttile;
-pcolor(time,vertical_bins,u','EdgeColor','none');
+pcolor(average_time,vertical_bins,u','EdgeColor','none');
 colormap(ax1,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'East (m/s)';
@@ -243,7 +385,7 @@ datetick('x');
 ylabel ('z (m)');
 
 ax2 = nexttile;
-pcolor(time,vertical_bins,v','EdgeColor','none');
+pcolor(average_time,vertical_bins,v','EdgeColor','none');
 colormap(ax2,cmocean('balance'));
 cb = colorbar;
 cb.Label.String = 'North (m/s)';
@@ -252,19 +394,41 @@ datetick('x');
 ylabel ('z (m)');
 
 ax3 = nexttile;
-pcolor(time,vertical_bins,backscatter4','edgecolor','none');
+pcolor(average_time,vertical_bins,backscatter3','edgecolor','none');
 colormap(ax3,cmocean('deep'));
 cb = colorbar;
 cb.Label.String = 'Backscatter';
 datetick('x');
 ylabel ('z (m)');
 
-%{
+linkaxes([ax1 ax2 ax3],'xy');
+
+% save([destination_dir file_name_base 'all_processed_3beam_velocity.fig']);
+
+% plot wave data
+figure(2);
+tiledlayout(3,1);
+
 nexttile;
-pcolor(time,vertical_bins,w','EdgeColor','none');
-cb = colorbar;
-cb.Label.String = 'Up (m/s)';
-clim(max(abs(w),[],'all')*[-1 1]);
+plot(burst_time,[sigBurst.peakwaveperiod],'color','black','linewidth',1);
 datetick('x');
-ylabel ('z (m)');
-%}
+ylabel('T_p (s)');
+
+nexttile;
+plot(burst_time,[sigBurst.sigwaveheight],'color','black','linewidth',1);
+datetick('x');
+ylabel('H_s (m)');
+
+nexttile;
+pcolor(burst_time,freq,energy','edgecolor','none');
+colormap(cmocean('amp'));
+cb = colorbar;
+cb.Label.String = 'PSD (m^2/Hz)';
+set(gca,'colorscale','log');
+set(gca,'yscale','log');
+datetick('x');
+ylabel('Frequency (Hz)');
+
+linkaxes([ax1 ax2 ax3],'x');
+
+% save([destination_dir file_name_base 'all_processed_3beam_waves.fig']);
