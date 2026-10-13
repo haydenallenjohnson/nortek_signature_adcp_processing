@@ -27,7 +27,7 @@
 % This code is maintained in a Github repository:
 % https://github.com/haydenallenjohnson/nortek_signature_adcp_processing
 
-% Hayden Johnson, 2026-09-08
+% Hayden Johnson, 2026-10-13
 
 % -------------------------------------------------------------------------
 % USER-SPECIFIED PARAMETERS
@@ -40,7 +40,6 @@ longitude = -156.8791;
 declination = 9.9; % degrees, positive if magnetic north is east of true north
 % value 10.5 calculated for 2025-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
 % value 9.9 calculated for 2026-02-01 using https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml
-
 
 % specify beam angle (degrees) of transducer faces relative to instrument z axis
 beam_angle = 25;
